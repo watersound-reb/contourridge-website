@@ -1,0 +1,3073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contour Ridge | Private Equity</title>
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-size: 16px;
+            scroll-snap-type: y mandatory;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(180deg, #1A1A2E 0%, #1F2041 50%, #1A1A2E 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: background 0.8s ease;
+        }
+
+        /* Film grain / noise texture overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.5;
+            mix-blend-mode: overlay;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* ===== COLOR VARS ===== */
+        :root {
+            --accent: #00B4D8;
+            --accent-light: #48CAE4;
+            --accent-dim: rgba(0, 180, 216, 0.12);
+            --accent-border: rgba(0, 180, 216, 0.25);
+            --bg-dark: #1A1A2E;
+            --bg-dark-alt: #1F2041;
+            --bg-dark-alt2: #242650;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --bg-card-hover: rgba(255, 255, 255, 0.07);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.78);
+            --text-muted: rgba(255, 255, 255, 0.58);
+        }
+
+        /* ===== NAVIGATION ===== */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 48px;
+            background: transparent;
+            transition: background 0.3s ease;
+        }
+
+        .nav.scrolled {
+            background: rgba(26, 26, 46, 0.94);
+            backdrop-filter: blur(16px);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .nav-logo-full-img {
+            height: 24px;
+            width: auto;
+        }
+
+        .nav-menu-btn {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px;
+            background: none;
+            border: none;
+        }
+
+        .nav-menu-btn span {
+            display: block;
+            width: 26px;
+            height: 2px;
+            background: #ffffff;
+            border-radius: 1px;
+            transition: all 0.3s ease;
+        }
+
+        /* Mobile menu overlay */
+        .mobile-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 26, 46, 0.98);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 32px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .mobile-menu.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .mobile-menu a {
+            font-size: 1.6rem;
+            font-weight: 300;
+            color: #ffffff;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            transition: color 0.2s;
+        }
+
+        .mobile-menu a:hover {
+            color: var(--accent-light);
+        }
+
+        /* ===== HERO SECTION — LIVING TOPOGRAPHY ===== */
+        .hero {
+            position: relative;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            background: #1A1A2E;
+        }
+
+        #topoCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Vignette overlay for depth */
+        .hero-vignette {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(26,26,46,0.6) 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Mouse-follow glow spotlight */
+        .hero-glow {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            background: radial-gradient(
+                600px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+                rgba(0, 180, 216, 0.12) 0%,
+                rgba(0, 180, 216, 0.04) 30%,
+                transparent 70%
+            );
+        }
+
+        .hero:hover .hero-glow {
+            opacity: 1;
+        }
+
+        /* Bottom fade for seamless transition to next section */
+        .hero-bottom-fade {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 200px;
+            background: linear-gradient(to bottom, transparent, #1A1A2E);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 3;
+            width: 100%;
+            max-width: 1200px;
+            padding: 0 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        /* Logo and PE text above headline */
+        .hero-brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 36px;
+            opacity: 0;
+            animation: heroFadeIn 1s ease-out 0.2s forwards;
+        }
+
+        .hero-brand img {
+            height: 42px;
+            width: auto;
+            opacity: 0.9;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .hero-pe-text {
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.45);
+            letter-spacing: 0.5em;
+            text-transform: uppercase;
+            display: block;
+            text-indent: 0.5em; /* offset trailing letter-spacing for visual centering */
+        }
+
+        /* Kinetic headline */
+        .hero-headline {
+            overflow: hidden;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hero-headline-word {
+            display: block;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            opacity: 0;
+            transform: translateY(100%);
+            text-align: center;
+        }
+
+        .hero-headline-word.word-investing {
+            font-size: clamp(2.8rem, 6.5vw, 5.8rem);
+            animation: heroWordReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
+        }
+
+        .hero-headline-word.word-in {
+            font-size: clamp(2.2rem, 4.5vw, 4rem);
+            font-weight: 300;
+            color: var(--accent);
+            animation: heroWordReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.7s forwards;
+        }
+
+        .hero-headline-word.word-growth {
+            font-size: clamp(2.8rem, 6.5vw, 5.8rem);
+            animation: heroWordReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.9s forwards;
+        }
+
+        @keyframes heroWordReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(100%);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Subtitle */
+        .hero-subtitle {
+            font-size: clamp(0.95rem, 1.8vw, 1.25rem);
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.55);
+            letter-spacing: 0.06em;
+            margin-top: 24px;
+            max-width: 650px;
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+            opacity: 0;
+            animation: heroFadeIn 1s ease-out 1.3s forwards;
+        }
+
+        @keyframes heroFadeIn {
+            0% { opacity: 0; transform: translateY(16px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Floating data annotation cards */
+        .hero-data-points {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-top: 44px;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            opacity: 0;
+            animation: heroFadeIn 1s ease-out 1.6s forwards;
+        }
+
+        .hero-data-point {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 20px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(0, 180, 216, 0.12);
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: all 0.4s ease;
+            cursor: default;
+        }
+
+        .hero-data-point:hover {
+            border-color: rgba(0, 180, 216, 0.35);
+            background: rgba(0, 180, 216, 0.06);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(0, 180, 216, 0.1);
+        }
+
+        .hero-data-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+
+        .hero-data-label {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        /* Scroll indicator — minimal line + text */
+        .hero-scroll-cta {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            right: 0;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            animation: heroFadeIn 1s ease-out 2s forwards;
+        }
+
+        .hero-scroll-cta span {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            text-indent: 0.25em; /* offset trailing letter-spacing */
+        }
+
+        .hero-scroll-line {
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, rgba(0, 180, 216, 0.5), transparent);
+            animation: scrollPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes scrollPulse {
+            0%, 100% { opacity: 0.4; height: 40px; }
+            50% { opacity: 1; height: 52px; }
+        }
+
+        /* Floating background elements */
+        .floating-orb {
+            position: fixed;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(0, 180, 216, 0.4), rgba(0, 180, 216, 0.05));
+            filter: blur(40px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .floating-orb-1 {
+            width: 300px;
+            height: 300px;
+            top: 10%;
+            left: -100px;
+            animation: float1 25s ease-in-out infinite;
+            opacity: 0.3;
+        }
+
+        .floating-orb-2 {
+            width: 250px;
+            height: 250px;
+            top: 40%;
+            right: -80px;
+            animation: float2 30s ease-in-out infinite;
+            opacity: 0.25;
+        }
+
+        .floating-orb-3 {
+            width: 200px;
+            height: 200px;
+            bottom: 10%;
+            left: 5%;
+            animation: float3 35s ease-in-out infinite;
+            opacity: 0.2;
+        }
+
+        .floating-orb-4 {
+            width: 150px;
+            height: 150px;
+            bottom: 30%;
+            right: 10%;
+            animation: float4 28s ease-in-out infinite;
+            opacity: 0.25;
+        }
+
+        @keyframes float1 {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(30px, -30px); }
+            50% { transform: translate(0, 40px); }
+            75% { transform: translate(-30px, -20px); }
+        }
+
+        @keyframes float2 {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-40px, 30px); }
+            50% { transform: translate(20px, -30px); }
+            75% { transform: translate(-20px, 40px); }
+        }
+
+        @keyframes float3 {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(35px, 20px); }
+            50% { transform: translate(-25px, 35px); }
+            75% { transform: translate(40px, -25px); }
+        }
+
+        @keyframes float4 {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-30px, -35px); }
+            50% { transform: translate(35px, 25px); }
+            75% { transform: translate(-35px, 30px); }
+        }
+
+        /* ===== SECTION SHARED STYLES ===== */
+        .section {
+            position: relative;
+            padding: 80px 48px;
+            max-width: 1400px;
+            margin: 0 auto;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.2rem;
+            font-weight: 300;
+            color: var(--accent);
+            letter-spacing: 0.04em;
+            margin-bottom: 24px;
+            position: relative;
+            text-shadow: 0 0 40px rgba(0, 180, 216, 0.25), 0 0 80px rgba(0, 180, 216, 0.1);
+        }
+
+        /* Ambient glow behind section titles */
+        .section-title::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 100px;
+            background: radial-gradient(ellipse, rgba(0, 180, 216, 0.12) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            pointer-events: none;
+            filter: blur(20px);
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: clamp(1.3rem, 3vw, 2rem);
+            font-weight: 300;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto 32px;
+            line-height: 1.45;
+        }
+
+        /* Brand mark background motif */
+        .brand-motif {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 600px;
+            height: 600px;
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .brand-motif img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* ===== FULL-WIDTH BG SECTIONS ===== */
+        .section-bg {
+            position: relative;
+            overflow: hidden;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+        }
+
+        /* Main tinted background — fades in/out at edges */
+        .section-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                135deg,
+                rgba(0, 180, 216, 0.03) 0%,
+                rgba(31, 32, 65, 0.6) 25%,
+                rgba(36, 38, 80, 0.7) 50%,
+                rgba(31, 32, 65, 0.6) 75%,
+                rgba(0, 180, 216, 0.03) 100%
+            );
+            background-size: 400% 400%;
+            animation: gradientShift 20s ease-in-out infinite;
+            z-index: 0;
+            /* Top/bottom mask — wide fade for seamless transitions */
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+        }
+
+        /* Ambient glow accents */
+        .section-bg::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 40%, rgba(0, 180, 216, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 60%, rgba(0, 180, 216, 0.03) 0%, transparent 60%);
+            background-size: 200% 200%;
+            animation: gradientFloat 25s ease-in-out infinite;
+            z-index: 0;
+            pointer-events: none;
+            /* Same wide edge fade */
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+        }
+
+        .section-bg .section {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Alternating section gradient patterns */
+        .section-bg:nth-of-type(odd)::before {
+            background: linear-gradient(
+                45deg,
+                rgba(0, 180, 216, 0.02) 0%,
+                rgba(28, 28, 55, 0.5) 25%,
+                rgba(33, 33, 68, 0.6) 50%,
+                rgba(28, 28, 55, 0.5) 75%,
+                rgba(0, 180, 216, 0.03) 100%
+            );
+            background-size: 400% 400%;
+            animation: gradientShiftAlt 20s ease-in-out infinite;
+        }
+
+        /* Padding on section-bg to give the fades room to breathe */
+        .section-bg {
+            padding-top: 48px;
+            padding-bottom: 48px;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            25% {
+                background-position: 50% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            75% {
+                background-position: 50% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes gradientShiftAlt {
+            0% {
+                background-position: 100% 50%;
+            }
+            25% {
+                background-position: 50% 50%;
+            }
+            50% {
+                background-position: 0% 50%;
+            }
+            75% {
+                background-position: 50% 50%;
+            }
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+
+        @keyframes gradientFloat {
+            0% {
+                background-position: 0% 0%;
+            }
+            25% {
+                background-position: 25% 25%;
+            }
+            50% {
+                background-position: 50% 50%;
+            }
+            75% {
+                background-position: 25% 75%;
+            }
+            100% {
+                background-position: 0% 0%;
+            }
+        }
+
+        /* ===== PROVEN TEAM SECTION ===== */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .team-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 36px 32px;
+            transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .team-card:hover {
+            border-color: var(--accent-border);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 180, 216, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        .team-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background: var(--accent-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .team-card-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--accent);
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        .team-card h3 {
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            letter-spacing: 0.01em;
+        }
+
+        .team-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* ===== STRATEGY SECTION ===== */
+        .strategy-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: start;
+            margin-top: 48px;
+        }
+
+        .strategy-left {
+            position: relative;
+        }
+
+        .strategy-visual {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            background: linear-gradient(135deg, rgba(0, 180, 216, 0.05) 0%, rgba(0, 180, 216, 0.02) 100%);
+            border-radius: 8px;
+            border: 1px solid var(--accent-dim);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background-size: 200% 200%;
+            animation: strategyGradientFlow 15s ease-in-out infinite;
+        }
+
+        .growth-loops-svg {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            filter: drop-shadow(0 0 20px rgba(0, 180, 216, 0.1));
+        }
+
+        .growth-loops-svg text {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            text-transform: uppercase;
+        }
+
+        @keyframes stageAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes strategyGradientFlow {
+            0%, 100% {
+                background-position: 0% 0%;
+            }
+            50% {
+                background-position: 100% 100%;
+            }
+        }
+
+        .strategy-visual::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(0, 180, 216, 0.05) 0%, transparent 70%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .strategy-right h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 14px;
+        }
+
+        .strategy-right p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+
+        /* ===== FIRST PRINCIPLES ===== */
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-top: 48px;
+        }
+
+        .principle-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 32px 28px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .principle-card:hover {
+            border-color: var(--accent-border);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 180, 216, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        .principle-card h3 {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+        }
+
+        .principle-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* ===== INVESTMENT CRITERIA ===== */
+        .criteria-timeline {
+            position: relative;
+            margin-top: 56px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 80px;
+        }
+
+        .criteria-timeline::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 20px;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--accent) 0%, var(--accent) 80%, transparent 100%);
+        }
+
+        .timeline-stage {
+            display: flex;
+            gap: 32px;
+            margin-bottom: 48px;
+            position: relative;
+        }
+
+        .timeline-stage-final {
+            margin-bottom: 0;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -68px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(51, 229, 255, 0.9) 0%, var(--accent) 40%, rgba(0, 170, 200, 0.95) 100%);
+            border: 2px solid rgba(0, 180, 216, 0.5);
+            box-shadow:
+                0 0 0 1px var(--bg-dark),
+                inset -2px -2px 8px rgba(0, 0, 0, 0.4),
+                inset 2px 2px 8px rgba(51, 229, 255, 0.3),
+                0 0 20px rgba(0, 180, 216, 0.4),
+                0 0 40px rgba(0, 180, 216, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .timeline-dot::after {
+            content: '';
+            position: absolute;
+            inset: 6px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .timeline-number {
+            position: relative;
+            z-index: 2;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1A1A2E;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            text-shadow: 0 1px 0 rgba(0, 180, 216, 0.3);
+        }
+
+        .timeline-content {
+            flex: 1;
+            padding-top: 6px;
+        }
+
+        .timeline-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+            letter-spacing: 0.01em;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .timeline-stage:nth-child(1) .timeline-title {
+            animation-delay: 0.1s;
+        }
+
+        .timeline-stage:nth-child(2) .timeline-title {
+            animation-delay: 0.2s;
+        }
+
+        .timeline-stage:nth-child(3) .timeline-title {
+            animation-delay: 0.3s;
+        }
+
+        .timeline-stage:nth-child(4) .timeline-title {
+            animation-delay: 0.4s;
+        }
+
+        .timeline-stage:nth-child(5) .timeline-title {
+            animation-delay: 0.5s;
+        }
+
+        .timeline-text {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .timeline-stage:nth-child(1) .timeline-text {
+            animation-delay: 0.25s;
+        }
+
+        .timeline-stage:nth-child(2) .timeline-text {
+            animation-delay: 0.35s;
+        }
+
+        .timeline-stage:nth-child(3) .timeline-text {
+            animation-delay: 0.45s;
+        }
+
+        .timeline-stage:nth-child(4) .timeline-text {
+            animation-delay: 0.55s;
+        }
+
+        .timeline-stage:nth-child(5) .timeline-text {
+            animation-delay: 0.65s;
+        }
+
+        /* Animation keyframes */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
+        /* ===== GROWTH LOOPS ===== */
+        .growth-loops-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 64px;
+            padding: 0 32px;
+            min-height: 700px;
+        }
+
+        /* Central SVG for circular connectors */
+        .growth-loops-container::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(0, 180, 216, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+            animation: pulseGlow 4s ease-in-out infinite;
+        }
+
+        /* Circular connectors using SVG overlay */
+        .growth-loops-container::after {
+            content: '';
+            position: absolute;
+            width: 420px;
+            height: 420px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-image:
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 420 420' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='210' cy='210' r='200' fill='none' stroke='rgba(0,180,216,0.25)' stroke-width='1'/%3E%3C/svg%3E");
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Growth Loop Stages - Initially centered, animated by scroll */
+        .growth-loop-stage {
+            position: absolute;
+            width: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 8px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 1;
+            z-index: 2;
+            transition: none;
+        }
+
+
+        /* Hide connectors - they're now part of the container styling */
+        .loop-connector {
+            display: none;
+        }
+
+        .loop-stage-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .loop-stage-icon {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(0, 180, 216, 0.15) 0%, rgba(0, 180, 216, 0.05) 100%);
+            border: 2.5px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 0 40px rgba(0, 180, 216, 0.25), inset 0 0 25px rgba(0, 180, 216, 0.08);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .loop-stage-icon svg {
+            width: 48px;
+            height: 48px;
+            stroke: var(--accent);
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .growth-loop-stage:hover .loop-stage-icon {
+            box-shadow: 0 0 60px rgba(0, 180, 216, 0.5), inset 0 0 35px rgba(0, 180, 216, 0.15);
+            transform: scale(1.15) translateZ(0);
+            border-color: #48CAE4;
+        }
+
+        .growth-loop-stage:hover .loop-stage-icon svg {
+            filter: drop-shadow(0 0 8px rgba(0, 180, 216, 0.6));
+        }
+
+        .loop-stage-number {
+            display: none;
+        }
+
+        .loop-stage-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: 0.01em;
+            line-height: 1.3;
+            margin: 0;
+        }
+
+        .growth-loop-stage:hover .loop-stage-title {
+            color: var(--accent);
+            transition: color 0.3s ease;
+        }
+
+        .loop-stage-description {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Animation keyframes */
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% {
+                box-shadow: 0 0 40px rgba(0, 180, 216, 0.1);
+            }
+            50% {
+                box-shadow: 0 0 80px rgba(0, 180, 216, 0.2);
+            }
+        }
+
+        /* ===== FOCUS AREAS ===== */
+        .focus-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .focus-grid .sector-card:nth-child(4),
+        .focus-grid .sector-card:nth-child(5) {
+            /* Center the last two cards */
+        }
+
+        .sector-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 18px 18px;
+            transition: all 0.3s ease;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .sector-card:hover {
+            border-color: var(--accent-border);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 180, 216, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        .sector-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 1.5px solid var(--accent-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        .sector-card-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--accent);
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        .sector-card h3 {
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .sector-card p {
+            font-size: 0.86rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Bottom row centering for 5 items in 3-col grid */
+        .focus-grid-bottom {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+            max-width: 66.666%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* ===== SECTORS ACCORDION ===== */
+        /* Tab Pills Navigation */
+        .sectors-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            max-width: 900px;
+            margin: 24px auto 28px;
+            justify-content: center;
+        }
+
+        .sector-tab {
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .sector-tab:hover {
+            border-color: var(--accent-border);
+            color: var(--accent);
+        }
+
+        .sector-tab.active {
+            background: var(--accent);
+            color: #1A1A2E;
+            border-color: var(--accent);
+        }
+
+        /* Tab Content */
+        .sectors-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .sector-panel {
+            display: none;
+            opacity: 0;
+        }
+
+        .sector-panel.active {
+            display: block;
+            animation: panelFadeIn 0.5s ease forwards;
+        }
+
+        @keyframes panelFadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .sector-header-info {
+            margin-bottom: 24px;
+            opacity: 0;
+        }
+
+        .sector-panel.active .sector-header-info {
+            animation: slideInDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .sector-header-info h3 {
+            font-size: 1.6rem;
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 8px;
+            letter-spacing: 0.01em;
+        }
+
+        .sector-header-info p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        .sector-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .sector-detail {
+            background: rgba(0, 180, 216, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 180, 216, 0.1);
+            opacity: 0;
+            transform: translateY(20px);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .sector-panel.active .sector-detail {
+            animation: slideInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .sector-panel.active .sector-detail:nth-child(1) {
+            animation-delay: 0.15s;
+        }
+
+        .sector-panel.active .sector-detail:nth-child(2) {
+            animation-delay: 0.25s;
+        }
+
+        .sector-panel.active .sector-detail:nth-child(3) {
+            animation-delay: 0.35s;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .sector-detail h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 6px;
+        }
+
+        .sector-detail p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ===== PARTNERS SECTION ===== */
+        .partners-list {
+            display: flex;
+            flex-direction: column;
+            gap: 64px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .partner-card {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 48px;
+            align-items: start;
+        }
+
+        .partner-photo {
+            width: 240px;
+            height: 280px;
+            border-radius: 0;
+            object-fit: cover;
+            object-position: center top;
+            border: none;
+            filter: grayscale(15%) brightness(1.05);
+            transition: filter 0.4s ease;
+        }
+
+        .partner-photo:hover {
+            filter: grayscale(0%) brightness(1.1);
+        }
+
+        .partner-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .partner-name {
+            font-size: 1.6rem;
+            font-weight: 400;
+            color: var(--accent-light);
+            letter-spacing: 0.01em;
+        }
+
+        .partner-role {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 12px;
+        }
+
+        .partner-bio {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.75;
+        }
+
+        /* ===== PORTFOLIO SECTION ===== */
+        .portfolio-subsection {
+            margin-bottom: 64px;
+        }
+
+        .portfolio-subsection:last-child {
+            margin-bottom: 0;
+        }
+
+        .portfolio-subsection-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            margin-bottom: 28px;
+        }
+
+        .portfolio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .portfolio-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 32px 28px;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .portfolio-card:hover {
+            border-color: var(--accent-border);
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 180, 216, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        .portfolio-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .portfolio-card-tag {
+            font-size: 0.76rem;
+            font-weight: 500;
+            color: var(--accent-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .portfolio-card-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .portfolio-card-icon svg {
+            width: 26px;
+            height: 26px;
+            stroke: rgba(255, 255, 255, 0.35);
+            fill: none;
+            stroke-width: 1.5;
+        }
+
+        .portfolio-card h3 {
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .portfolio-card p {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+            flex: 1;
+        }
+
+        .portfolio-card-meta {
+            display: flex;
+            gap: 16px;
+            margin-top: 2px;
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .portfolio-card-link {
+            margin-top: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--accent);
+            letter-spacing: 0.02em;
+            transition: color 0.2s;
+        }
+
+        .portfolio-card-link:hover {
+            color: var(--accent-light);
+        }
+
+        .portfolio-card-link svg {
+            width: 13px;
+            height: 13px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .portfolio-card.exited {
+            opacity: 0.55;
+        }
+
+        .portfolio-card.exited:hover {
+            opacity: 0.8;
+        }
+
+        /* ===== CONTACT / FOOTER ===== */
+        .footer-wrapper {
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            background: linear-gradient(to bottom, transparent, rgba(26, 26, 46, 0.5));
+        }
+
+        .footer {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 36px 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .footer-right {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .footer-right a,
+        .footer-right span {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.55);
+            transition: color 0.2s;
+            letter-spacing: 0.02em;
+        }
+
+        .footer-right a:hover {
+            color: #ffffff;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .principles-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .focus-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .focus-grid-bottom {
+                max-width: 50%;
+                grid-template-columns: 1fr;
+            }
+            .strategy-content,
+            .criteria-grid {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .partner-card {
+                grid-template-columns: 200px 1fr;
+                gap: 32px;
+            }
+            .sectors-accordion {
+                max-width: 100%;
+            }
+
+            /* Growth Loops - scale down circle for tablet */
+            .growth-loops-container {
+                min-height: 550px;
+            }
+            .growth-loops-container::before {
+                width: 400px;
+                height: 400px;
+            }
+            .growth-loops-container::after {
+                width: 340px;
+                height: 340px;
+            }
+
+            /* Timeline - reduce padding for tablet */
+            .criteria-timeline {
+                padding-left: 60px;
+            }
+            .timeline-marker {
+                left: -52px;
+            }
+            .timeline-dot {
+                width: 40px;
+                height: 40px;
+            }
+            .timeline-number {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+
+            /* Sectors - ensure grid works */
+            .sectors-content {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                padding: 18px 24px;
+            }
+            .nav-logo-wordmark {
+                height: 12px;
+            }
+            .nav-logo-mark {
+                width: 44px;
+                height: 10px;
+            }
+            .section {
+                padding: 48px 20px;
+            }
+            .hero-content {
+                padding: 0 20px;
+            }
+            .hero-data-points {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                width: 100%;
+                max-width: 320px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .hero-data-point {
+                min-width: 0;
+                width: 100%;
+                padding: 12px 8px;
+                box-sizing: border-box;
+            }
+            .hero-data-point:last-child:nth-child(odd) {
+                grid-column: 1 / -1;
+                max-width: calc(50% - 5px);
+                margin: 0 auto;
+            }
+            .hero-pe-text {
+                font-size: 0.58rem;
+                letter-spacing: 0.3em;
+            }
+            .hero-subtitle {
+                font-size: 0.9rem;
+            }
+            .section-title {
+                font-size: 1.6rem;
+            }
+            .section-subtitle {
+                font-size: 1.1rem;
+                margin-bottom: 20px;
+            }
+            .principles-grid {
+                grid-template-columns: 1fr;
+            }
+            .focus-grid {
+                grid-template-columns: 1fr;
+            }
+            .focus-grid-bottom {
+                max-width: 100%;
+                grid-template-columns: 1fr;
+            }
+            .portfolio-grid {
+                grid-template-columns: 1fr;
+            }
+            .team-grid {
+                grid-template-columns: 1fr;
+            }
+            .partner-card {
+                grid-template-columns: 1fr;
+                gap: 24px;
+                text-align: center;
+            }
+            .partner-photo {
+                width: 200px;
+                height: 240px;
+                margin: 0 auto;
+                border-radius: 0;
+                border: none;
+            }
+            .footer {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+                padding: 24px;
+            }
+
+            /* ===== GROWTH LOOPS - MOBILE VERTICAL STACK ===== */
+            .growth-loops-container {
+                min-height: auto;
+                padding: 0 16px;
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 20px;
+                margin-top: 32px;
+            }
+            .growth-loops-container::before {
+                display: none;
+            }
+            .growth-loops-container::after {
+                display: none;
+            }
+            .growth-loop-stage {
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                transform: none !important;
+                width: 100%;
+                max-width: 360px;
+                margin: 0 auto;
+                display: grid !important;
+                grid-template-columns: 48px 1fr;
+                grid-template-rows: auto auto;
+                column-gap: 14px;
+                row-gap: 2px;
+                align-items: center;
+                text-align: left;
+                opacity: 1;
+            }
+            .loop-stage-header {
+                display: contents;
+            }
+            .loop-stage-icon {
+                grid-column: 1;
+                grid-row: 1 / 3;
+                width: 48px;
+                height: 48px;
+                align-self: center;
+            }
+            .loop-stage-icon svg {
+                width: 24px;
+                height: 24px;
+            }
+            .loop-stage-title {
+                grid-column: 2;
+                grid-row: 1;
+                font-size: 0.95rem;
+                align-self: end;
+            }
+            .loop-stage-description {
+                grid-column: 2;
+                grid-row: 2;
+                font-size: 0.8rem;
+                padding-left: 0;
+                align-self: start;
+            }
+            .strategy-content {
+                gap: 24px;
+            }
+
+            /* ===== INVESTMENT TIMELINE - MOBILE ===== */
+            .criteria-timeline {
+                padding-left: 48px;
+                margin-top: 32px;
+            }
+            .criteria-timeline::before {
+                left: 16px;
+            }
+            .timeline-marker {
+                left: -40px;
+                width: 32px;
+                height: 32px;
+            }
+            .timeline-dot {
+                width: 32px;
+                height: 32px;
+            }
+            .timeline-number {
+                width: 32px;
+                height: 32px;
+                font-size: 0.85rem;
+            }
+            .timeline-stage {
+                gap: 16px;
+                margin-bottom: 32px;
+            }
+            .timeline-title {
+                font-size: 1rem;
+            }
+            .timeline-text {
+                font-size: 0.85rem;
+            }
+
+            /* ===== SECTORS - MOBILE ===== */
+            .sectors-tabs {
+                margin: 16px auto 20px;
+                gap: 8px;
+            }
+            .sector-tab {
+                padding: 8px 14px;
+                font-size: 0.8rem;
+                white-space: normal;
+                text-align: center;
+            }
+            .sectors-content {
+                max-width: 100%;
+            }
+            .sector-header-info {
+                margin-bottom: 16px;
+            }
+            .sector-header-info h3 {
+                font-size: 1.25rem;
+            }
+            .sector-header-info p {
+                font-size: 0.9rem;
+            }
+            .sector-details-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .sector-detail {
+                padding: 14px;
+            }
+            .sector-detail h4 {
+                font-size: 0.82rem;
+            }
+            .sector-detail p {
+                font-size: 0.88rem;
+            }
+        }
+
+        /* ===== CONTOUR LINE BACKGROUNDS ===== */
+        .contour-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .contour-bg svg {
+            position: absolute;
+            width: 120%;
+            left: -10%;
+            opacity: 0.06;
+        }
+
+        .contour-bg svg.contour-top {
+            top: -5%;
+            height: 50%;
+        }
+
+        .contour-bg svg.contour-bottom {
+            bottom: -5%;
+            height: 50%;
+            transform: scaleY(-1);
+        }
+
+        /* Parallax contour lines move at different speeds */
+        .contour-bg svg polyline {
+            vector-effect: non-scaling-stroke;
+        }
+
+        .contour-layer-slow {
+            will-change: transform;
+        }
+
+        .contour-layer-mid {
+            will-change: transform;
+        }
+
+        .contour-layer-fast {
+            will-change: transform;
+        }
+
+        /* Partner photos — no box shadow, transparent bg does the work */
+        .partner-photo {
+            box-shadow: none;
+        }
+
+        .partner-photo:hover {
+            box-shadow: none;
+        }
+
+        /* Timeline glow effect */
+        .timeline-dot {
+            box-shadow: 0 0 20px rgba(0, 180, 216, 0.3), 0 0 40px rgba(0, 180, 216, 0.1);
+        }
+
+        .criteria-timeline::before {
+            box-shadow: 0 0 8px rgba(0, 180, 216, 0.2);
+        }
+
+        /* Sector tab glow when active */
+        .sector-tab.active {
+            box-shadow: 0 0 16px rgba(0, 180, 216, 0.25), 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Nav glassmorphism enhancement */
+        .nav.scrolled {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Strategy visual glassmorphism */
+        .strategy-visual {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        /* ===== SCROLL ANIMATIONS ===== */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Brand mark background motif -->
+    <div class="brand-motif">
+        <img src="assets/cr-logo-mark.png" alt="">
+    </div>
+
+    <!-- Floating animated background elements -->
+    <div class="floating-orb floating-orb-1"></div>
+    <div class="floating-orb floating-orb-2"></div>
+    <div class="floating-orb floating-orb-3"></div>
+    <div class="floating-orb floating-orb-4"></div>
+
+    <!-- NAVIGATION -->
+    <nav class="nav" id="nav">
+        <a href="#" class="nav-logo">
+            <img src="assets/cr-logo.png" alt="Contour Ridge" class="nav-logo-full-img">
+        </a>
+        <button class="nav-menu-btn" id="menuBtn" aria-label="Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </nav>
+
+    <!-- MOBILE MENU -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="#team" onclick="closeMenu()">Team</a>
+        <a href="#strategy" onclick="closeMenu()">Strategy</a>
+        <a href="#principles" onclick="closeMenu()">Principles</a>
+        <a href="#criteria" onclick="closeMenu()">Investment</a>
+        <a href="#focus" onclick="closeMenu()">Focus</a>
+        <a href="#sectors" onclick="closeMenu()">Sectors</a>
+        <a href="#partners" onclick="closeMenu()">Partners</a>
+        <a href="#portfolio" onclick="closeMenu()">Portfolio</a>
+        <a href="mailto:info@contourridge.com" onclick="closeMenu()">Contact</a>
+    </div>
+
+    <!-- HERO — LIVING TOPOGRAPHY -->
+    <section class="hero" id="hero">
+        <canvas id="topoCanvas"></canvas>
+        <div class="hero-glow" id="heroGlow"></div>
+        <div class="hero-vignette"></div>
+        <div class="hero-bottom-fade"></div>
+
+        <div class="hero-content">
+            <div class="hero-brand">
+                <img src="assets/cr-logo.png" alt="Contour Ridge">
+                <span class="hero-pe-text">Private Equity</span>
+            </div>
+
+            <div class="hero-headline">
+                <span class="hero-headline-word word-investing">Investing</span>
+                <span class="hero-headline-word word-in">in</span>
+                <span class="hero-headline-word word-growth">Growth</span>
+            </div>
+
+            <p class="hero-subtitle">Strategic capital and operational expertise for founder-led businesses</p>
+
+            <div class="hero-data-points">
+                <div class="hero-data-point">
+                    <span class="hero-data-value">2021</span>
+                    <span class="hero-data-label">Founded</span>
+                </div>
+                <div class="hero-data-point">
+                    <span class="hero-data-value">5</span>
+                    <span class="hero-data-label">Sectors</span>
+                </div>
+                <div class="hero-data-point">
+                    <span class="hero-data-value">6</span>
+                    <span class="hero-data-label">Investments</span>
+                </div>
+                <div class="hero-data-point">
+                    <span class="hero-data-value">1</span>
+                    <span class="hero-data-label">Exited</span>
+                </div>
+                <div class="hero-data-point">
+                    <span class="hero-data-value">9.6x</span>
+                    <span class="hero-data-label">First Exit MOIC</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-scroll-cta">
+            <span>Explore</span>
+            <div class="hero-scroll-line"></div>
+        </div>
+    </section>
+
+<!-- STRATEGY -->
+    <section class="section fade-in" id="strategy">
+        <h2 class="section-title">Strategy</h2>
+        <p class="section-subtitle">A collaborative investment model providing strategic capital and operational support to founder-led businesses</p>
+        <div class="growth-loops-container">
+            <div class="growth-loop-stage" data-initial-x="0" data-initial-y="-100" data-final-x="0" data-final-y="-280">
+                <div class="loop-stage-header">
+                    <div class="loop-stage-icon">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M3 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+                            <path d="M7 8h8M7 12h8M7 16h4" />
+                        </svg>
+                    </div>
+                    <div class="loop-stage-title">Playbook</div>
+                </div>
+                <p class="loop-stage-description">Where to Play, How to Win</p>
+            </div>
+
+            <div class="loop-connector"></div>
+
+            <div class="growth-loop-stage" data-initial-x="87" data-initial-y="-50" data-final-x="242" data-final-y="-140">
+                <div class="loop-stage-header">
+                    <div class="loop-stage-icon">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" />
+                            <path d="M10 3v4m0 4v4M3 10h4m4 0h4M10 14v4m0 4v4M3 21h4m4 0h4" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="loop-stage-title">Business Model</div>
+                </div>
+                <p class="loop-stage-description">Sustainable Competitive Advantage</p>
+            </div>
+
+            <div class="loop-connector"></div>
+
+            <div class="growth-loop-stage" data-initial-x="87" data-initial-y="50" data-final-x="242" data-final-y="140">
+                <div class="loop-stage-header">
+                    <div class="loop-stage-icon">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M13 2l-2 5h4l-7 13 1-8H4l9-2z" />
+                        </svg>
+                    </div>
+                    <div class="loop-stage-title">Growth Enablers</div>
+                </div>
+                <p class="loop-stage-description">Operational Excellence & Smart Capital</p>
+            </div>
+
+            <div class="loop-connector"></div>
+
+            <div class="growth-loop-stage" data-initial-x="-87" data-initial-y="50" data-final-x="-242" data-final-y="140">
+                <div class="loop-stage-header">
+                    <div class="loop-stage-icon">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M3 20h18M6 15v5M10 10v10M14 5v15M18 8v12" />
+                        </svg>
+                    </div>
+                    <div class="loop-stage-title">Key Metrics</div>
+                </div>
+                <p class="loop-stage-description">Strategic KPIs and Accountability</p>
+            </div>
+
+            <div class="loop-connector"></div>
+
+            <div class="growth-loop-stage" data-initial-x="-87" data-initial-y="-50" data-final-x="-242" data-final-y="-140">
+                <div class="loop-stage-header">
+                    <div class="loop-stage-icon">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M3 12l5 5L21 4" />
+                        </svg>
+                    </div>
+                    <div class="loop-stage-title">Execute</div>
+                </div>
+                <p class="loop-stage-description">Disciplined Execution & Improvement</p>
+            </div>
+        </div>
+    </section>
+
+<!-- SECTORS -->
+    <div class="section-bg">
+        <div class="contour-bg contour-layer-slow">
+            <svg class="contour-top" viewBox="0 0 1200 400" fill="none" preserveAspectRatio="none">
+                <polyline points="0,380 80,260 180,340 280,200 380,300 480,140 560,240 640,100 740,220 820,160 920,260 1000,120 1080,200 1200,60" stroke="rgba(0,180,216,0.6)" stroke-width="1.2" fill="none"/>
+                <polyline points="0,400 100,300 200,360 300,230 400,330 500,180 580,270 660,140 750,260 840,200 930,290 1020,170 1100,240 1200,100" stroke="rgba(0,180,216,0.35)" stroke-width="0.8" fill="none"/>
+                <polyline points="0,400 120,320 220,370 320,260 420,350 520,220 600,300 680,180 770,290 860,230 940,310 1040,210 1120,270 1200,140" stroke="rgba(0,180,216,0.15)" stroke-width="0.5" fill="none"/>
+            </svg>
+        </div>
+        <section class="section fade-in" id="sectors">
+            <h2 class="section-title">Sectors</h2>
+            <p class="section-subtitle">Strategic investment focus across differentiated lower-middle market industries</p>
+            <!-- Tab Pills Navigation -->
+            <div class="sectors-tabs">
+                <button class="sector-tab active" data-sector="consumer">Consumer</button>
+                <button class="sector-tab" data-sector="business">Business & Financial Services</button>
+                <button class="sector-tab" data-sector="technology">Technology</button>
+                <button class="sector-tab" data-sector="healthcare">Healthcare</button>
+                <button class="sector-tab" data-sector="industrial">Industrial</button>
+            </div>
+
+            <!-- Tab Content Panels -->
+            <div class="sectors-content">
+                <!-- Consumer -->
+                <div class="sector-panel active" data-sector="consumer">
+                    <div class="sector-header-info">
+                        <h3>Consumer</h3>
+                        <p>Direct-to-consumer and specialty brands</p>
+                    </div>
+                    <div class="sector-details-grid">
+                        <div class="sector-detail">
+                            <h4>Key Tailwinds</h4>
+                            <p>Accelerating direct-to-consumer channel expansion, growing consumer demand for authentic and sustainable products, consolidation of fragmented brand portfolios, and digital-native customer engagement strategies reshaping traditional retail dynamics.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Differentiated Offerings</h4>
+                            <p>We invest in brands with compelling origin stories, defensible positioning through community loyalty, premium pricing power, and operational expertise enabling multi-channel distribution and geographic expansion while maintaining brand integrity.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Technology Transformation</h4>
+                            <p>Agentic AI for personalized customer engagement and inventory optimization, vertical SaaS for supply chain transparency, AI-powered analytics for customer segmentation and lifetime value optimization, and workflow automation enabling efficient fulfillment at scale.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business and Financial Services -->
+                <div class="sector-panel" data-sector="business">
+                    <div class="sector-header-info">
+                        <h3>Business & Financial Services</h3>
+                        <p>B2B solutions and specialized financial services</p>
+                    </div>
+                    <div class="sector-details-grid">
+                        <div class="sector-detail">
+                            <h4>Key Tailwinds</h4>
+                            <p>Accelerating business process outsourcing and managed services adoption, regulatory complexity driving demand for specialized expertise, fragmentation creating consolidation opportunities, and heightened focus on operational efficiency and cost optimization across enterprise functions.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Differentiated Offerings</h4>
+                            <p>We partner with category-leading service providers offering specialized expertise, established client relationships, recurring revenue models, and proprietary methodologies that create switching costs and competitive defensibility.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Technology Transformation</h4>
+                            <p>Agentic AI automating routine client service delivery, vertical SaaS platforms digitizing industry-specific workflows, process intelligence identifying operational bottlenecks, AI-powered analytics enhancing client outcomes, and workflow automation enabling scalable service delivery.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Technology -->
+                <div class="sector-panel" data-sector="technology">
+                    <div class="sector-header-info">
+                        <h3>Technology</h3>
+                        <p>Enterprise software and digital infrastructure</p>
+                    </div>
+                    <div class="sector-details-grid">
+                        <div class="sector-detail">
+                            <h4>Key Tailwinds</h4>
+                            <p>Pervasive cloud migration, enterprise AI adoption accelerating digital transformation investments, increasing cybersecurity spending, and specialization creating opportunities for vertical solutions addressing unique industry needs and compliance requirements.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Differentiated Offerings</h4>
+                            <p>We invest in software companies with strong product-market fit, defensible technology advantages, established customer bases generating recurring revenue, and experienced teams capable of driving continued product development and market expansion.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Technology Transformation</h4>
+                            <p>Integration of agentic AI capabilities into core product offerings, vertical SaaS solutions addressing specialized industry workflows, process intelligence enabling proactive customer success, AI-powered analytics for predictive insights, and platform capabilities for seamless enterprise integration.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Healthcare -->
+                <div class="sector-panel" data-sector="healthcare">
+                    <div class="sector-header-info">
+                        <h3>Healthcare</h3>
+                        <p>Healthcare technology and provider services</p>
+                    </div>
+                    <div class="sector-details-grid">
+                        <div class="sector-detail">
+                            <h4>Key Tailwinds</h4>
+                            <p>Accelerating digital health adoption, mounting clinical and operational pressures on providers, regulatory drivers for interoperability and data exchange, artificial intelligence applications in diagnostics and treatment optimization, and market consolidation creating investment opportunities.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Differentiated Offerings</h4>
+                            <p>We partner with healthcare organizations demonstrating strong clinical outcomes, established provider relationships, sustainable competitive advantages, and management teams focused on delivering value across quality, access, and cost dimensions.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Technology Transformation</h4>
+                            <p>Clinical intelligence platforms leveraging AI for diagnostics and treatment optimization, agentic AI automating administrative workflows and prior authorization, workflow automation improving care coordination, process intelligence enabling operational optimization, and interoperability solutions improving data exchange across care settings.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Industrial -->
+                <div class="sector-panel" data-sector="industrial">
+                    <div class="sector-header-info">
+                        <h3>Industrial</h3>
+                        <p>Manufacturing, logistics, and specialized services</p>
+                    </div>
+                    <div class="sector-details-grid">
+                        <div class="sector-detail">
+                            <h4>Key Tailwinds</h4>
+                            <p>Industry 4.0 adoption and manufacturing digitalization, supply chain resilience driving nearshoring and automation investments, sustainability focus creating operational efficiency opportunities, labor market tightness accelerating automation adoption, and consolidation reshaping fragmented markets.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Differentiated Offerings</h4>
+                            <p>We invest in industrial companies with specialized engineering expertise, established customer relationships, operational excellence, proven track records navigating commodity cycles, and capabilities to drive continuous improvement and cost optimization.</p>
+                        </div>
+                        <div class="sector-detail">
+                            <h4>Technology Transformation</h4>
+                            <p>Process intelligence enabling predictive maintenance and throughput optimization, workflow automation reducing manual labor requirements, agentic AI optimizing supply chain planning, AI-powered analytics improving production efficiency, and digital tools enhancing real-time visibility and decision-making across operations.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+<!-- FIRST PRINCIPLES -->
+    <div class="section-bg">
+        <div class="contour-bg contour-layer-mid">
+            <svg class="contour-bottom" viewBox="0 0 1200 400" fill="none" preserveAspectRatio="none">
+                <polyline points="0,60 150,180 300,80 450,220 600,120 750,250 900,150 1050,280 1200,100" stroke="rgba(0,180,216,0.5)" stroke-width="1" fill="none"/>
+                <polyline points="0,100 150,200 300,120 450,250 600,160 750,280 900,190 1050,300 1200,150" stroke="rgba(0,180,216,0.25)" stroke-width="0.7" fill="none"/>
+                <polyline points="0,140 150,220 300,160 450,270 600,200 750,300 900,230 1050,320 1200,200" stroke="rgba(0,180,216,0.12)" stroke-width="0.4" fill="none"/>
+            </svg>
+        </div>
+        <section class="section fade-in" id="principles">
+            <h2 class="section-title">First Principles</h2>
+            <p class="section-subtitle">Core investment principles guiding portfolio company partnerships</p>
+            <div class="principles-grid">
+                <div class="principle-card">
+                    <h3>Purpose</h3>
+                    <p>Strong mission, culture, and leadership create enduring value. Returns follow operational excellence.</p>
+                </div>
+                <div class="principle-card">
+                    <h3>Partnership</h3>
+                    <p>We invest alongside founders, not above them. Aligned ownership structures drive superior outcomes.</p>
+                </div>
+                <div class="principle-card">
+                    <h3>Standards</h3>
+                    <p>Raising performance standards drives operational improvement and competitive positioning.</p>
+                </div>
+                <div class="principle-card">
+                    <h3>Differentiation</h3>
+                    <p>We invest in companies with distinct competitive advantages and superior customer value propositions.</p>
+                </div>
+                <div class="principle-card">
+                    <h3>Execution</h3>
+                    <p>Disciplined execution on strategic initiatives delivers sustainable growth and market leadership.</p>
+                </div>
+                <div class="principle-card">
+                    <h3>Humility</h3>
+                    <p>Respect for founder expertise and market knowledge informs collaborative decision-making.</p>
+                </div>
+                <div class="principle-card">
+                    <h3>Growth</h3>
+                    <p>Sustainable expansion driven by customer value creation and operational leverage.</p>
+                </div>
+                <div class="principle-card">
+                    <h3>Innovation</h3>
+                    <p>Cross-industry experience and diverse perspectives unlock breakthrough growth opportunities.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+<!-- INVESTMENT CRITERIA -->
+    <section class="section fade-in" id="criteria">
+        <h2 class="section-title">Investment</h2>
+        <p class="section-subtitle">Core investment criteria for portfolio company evaluation</p>
+        <div class="criteria-timeline">
+            <div class="timeline-stage">
+                <div class="timeline-marker">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-number">1</div>
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Meaningful Investment Size</div>
+                    <div class="timeline-text">$5–50M EBITDA target range providing meaningful scale and operational leverage</div>
+                </div>
+            </div>
+
+            <div class="timeline-stage">
+                <div class="timeline-marker">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-number">2</div>
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Defensible Market Position</div>
+                    <div class="timeline-text">Differentiated products, services, or business models with sustainable competitive advantages</div>
+                </div>
+            </div>
+
+            <div class="timeline-stage">
+                <div class="timeline-marker">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-number">3</div>
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Aligned Leadership</div>
+                    <div class="timeline-text">Ownership structures ensuring investors and management teams move in the same direction</div>
+                </div>
+            </div>
+
+            <div class="timeline-stage">
+                <div class="timeline-marker">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-number">4</div>
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Operational Leverage Opportunity</div>
+                    <div class="timeline-text">Control investments enabling strategic initiatives and sustainable growth through operational excellence</div>
+                </div>
+            </div>
+
+            <div class="timeline-stage timeline-stage-final">
+                <div class="timeline-marker">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-number">5</div>
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-title">Flexible Transaction Types</div>
+                    <div class="timeline-text">First institutional capital, founder transitions, corporate carve-outs, and complex situations</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<!-- FOCUS AREAS -->
+    <div class="section-bg">
+        <div class="contour-bg contour-layer-fast">
+            <svg class="contour-top" viewBox="0 0 1200 400" fill="none" preserveAspectRatio="none">
+                <polyline points="0,350 100,220 250,320 400,160 500,280 650,100 780,240 900,80 1050,200 1200,50" stroke="rgba(0,180,216,0.5)" stroke-width="1" fill="none"/>
+                <polyline points="0,380 100,260 250,350 400,200 500,310 650,150 780,270 900,130 1050,240 1200,100" stroke="rgba(0,180,216,0.25)" stroke-width="0.7" fill="none"/>
+            </svg>
+        </div>
+        <section class="section fade-in" id="focus">
+            <h2 class="section-title">Focus</h2>
+            <p class="section-subtitle">Strategic investments in lower-middle market businesses with differentiated offerings</p>
+            <div class="focus-grid" style="grid-template-columns: repeat(2, 1fr)">
+                <div class="sector-card">
+                    <div class="sector-card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    </div>
+                    <h3>Operating Model Excellence</h3>
+                    <p>We help founders tackle the fundamentals of their core operating models—front office and back office transformations—to unlock efficiency, improve unit economics, and create operational leverage that drives sustainable growth.</p>
+                </div>
+                <div class="sector-card">
+                    <div class="sector-card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2m0 2c-4.418 0-8 3.582-8 8s3.582 8 8 8 8-3.582 8-8-3.582-8-8-8m3.5 9c.828 0 1.5.672 1.5 1.5S16.328 16 15.5 16 14 15.328 14 14.5s.672-1.5 1.5-1.5m-7 0c.828 0 1.5.672 1.5 1.5S9.328 16 8.5 16 7 15.328 7 14.5 7.672 13 8.5 13z"/></svg>
+                    </div>
+                    <h3>Transformational Technology</h3>
+                    <p>We apply cutting-edge technologies—agentic AI, vertical SaaS, workflow automation, AI-powered analytics, and process intelligence—to business models, enabling founders to capture growth from industry tailwinds and maximize competitive advantage.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+<!-- THE CR ADVANTAGE / PROVEN TEAM -->
+    <div class="section-bg">
+        <div class="contour-bg contour-layer-slow">
+            <svg class="contour-bottom" viewBox="0 0 1200 400" fill="none" preserveAspectRatio="none">
+                <polyline points="0,80 200,200 350,100 500,240 700,140 850,260 1000,160 1200,300" stroke="rgba(0,180,216,0.45)" stroke-width="1" fill="none"/>
+                <polyline points="0,120 200,230 350,140 500,270 700,180 850,290 1000,200 1200,330" stroke="rgba(0,180,216,0.2)" stroke-width="0.6" fill="none"/>
+            </svg>
+        </div>
+        <section class="section fade-in" id="team">
+            <h2 class="section-title">The CR Advantage</h2>
+            <p class="section-subtitle">Comprehensive operational and financial expertise for lower-middle market investments</p>
+            <div class="team-grid">
+                <div class="team-card">
+                    <div class="team-card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    </div>
+                    <h3>Experienced Operators</h3>
+                    <p>Investment professionals with substantive operating experience in private equity-backed portfolio companies.</p>
+                </div>
+                <div class="team-card">
+                    <div class="team-card-icon">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </div>
+                    <h3>Digital Fluency</h3>
+                    <p>Strategic guidance enabling portfolio companies to leverage digital transformation for competitive advantage and scaled growth.</p>
+                </div>
+                <div class="team-card">
+                    <div class="team-card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <h3>Principled Professionals</h3>
+                    <p>Investment professionals with extensive transaction and operational experience across healthcare, technology, business services, and industrials.</p>
+                </div>
+                <div class="team-card">
+                    <div class="team-card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+                    </div>
+                    <h3>Creative Capital Solutions</h3>
+                    <p>Established relationships with institutional financing partners providing flexible capital structures to support strategic growth initiatives.</p>
+                </div>
+                <div class="team-card">
+                    <div class="team-card-icon">
+                        <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    </div>
+                    <h3>Seasoned Advisory Board</h3>
+                    <p>Distinguished advisors comprising former corporate executives and industry directors providing strategic guidance on critical operational decisions.</p>
+                </div>
+                <div class="team-card">
+                    <div class="team-card-icon">
+                        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                    <h3>Brand Thinkers</h3>
+                    <p>Strategic expertise in brand development and digital positioning to maintain market relevance and customer engagement.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+<!-- PARTNERS -->
+    <section class="section fade-in" id="partners">
+        <h2 class="section-title">Partners</h2>
+        <p class="section-subtitle">Investment Principals</p>
+        <div class="partners-list">
+            <div class="partner-card">
+                <img src="assets/dan-oconnor.png" alt="Dan O'Connor" class="partner-photo">
+                <div class="partner-info">
+                    <h3 class="partner-name">Dan O'Connor</h3>
+                    <div class="partner-role">Co-Founder &amp; Managing Partner</div>
+                    <p class="partner-bio">Dan brings extensive operating and investment experience from private equity-backed healthcare and technology companies. His background in corporate strategy and management consulting informs his approach to business model design, competitive positioning, and operational optimization. He focuses on identifying growth opportunities and enabling portfolio companies to navigate complex competitive landscapes.</p>
+                </div>
+            </div>
+            <div class="partner-card">
+                <img src="assets/matthew-landon.png" alt="Matthew Landon" class="partner-photo">
+                <div class="partner-info">
+                    <h3 class="partner-name">Matthew Landon</h3>
+                    <div class="partner-role">Co-Founder &amp; Managing Partner</div>
+                    <p class="partner-bio">Matt brings deep financial and transaction expertise from private equity, investment banking, and corporate finance backgrounds. His experience includes extensive M&amp;A work across software and business services, combined with comprehensive understanding of financial structuring and accounting principles. He leverages this experience to optimize capital structures, identify operational improvements, and support portfolio companies in achieving their strategic objectives.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<!-- PORTFOLIO -->
+    <div class="section-bg">
+        <div class="contour-bg contour-layer-mid">
+            <svg class="contour-top" viewBox="0 0 1200 400" fill="none" preserveAspectRatio="none">
+                <polyline points="0,300 120,180 240,280 360,120 480,240 600,80 720,200 840,60 960,180 1080,100 1200,40" stroke="rgba(0,180,216,0.4)" stroke-width="1" fill="none"/>
+                <polyline points="0,340 120,220 240,310 360,170 480,270 600,130 720,240 840,110 960,220 1080,150 1200,90" stroke="rgba(0,180,216,0.18)" stroke-width="0.6" fill="none"/>
+            </svg>
+        </div>
+        <section class="section fade-in" id="portfolio">
+            <h2 class="section-title">Portfolio</h2>
+            <p class="section-subtitle"></p>
+
+            <!-- Platform Investments -->
+            <div class="portfolio-subsection">
+                <div class="portfolio-subsection-title">Platform Investments</div>
+                <div class="portfolio-grid">
+                    <a href="https://trendyminds.com" target="_blank" rel="noopener" class="portfolio-card">
+                        <div class="portfolio-card-header">
+                            <span class="portfolio-card-tag">Marketing</span>
+                            <div class="portfolio-card-icon">
+                                <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                            </div>
+                        </div>
+                        <h3>TrendyMinds</h3>
+                        <p>Digital marketing agency delivering data-driven strategy and creative execution for brand-focused clients.</p>
+                        <div class="portfolio-card-meta">
+                            <span>Indianapolis, IN</span>
+                        </div>
+                        <span class="portfolio-card-link">
+                            trendyminds.com
+                            <svg viewBox="0 0 24 24"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                        </span>
+                    </a>
+                    <a href="https://enjoyjustdate.com/" target="_blank" rel="noopener" class="portfolio-card">
+                        <div class="portfolio-card-header">
+                            <span class="portfolio-card-tag">CPG / Wellness</span>
+                            <div class="portfolio-card-icon">
+                                <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            </div>
+                        </div>
+                        <h3>Just Date</h3>
+                        <p>Organic date syrup produced from California Medjool dates providing nutrient-rich, low-glycemic sweetening alternatives.</p>
+                        <div class="portfolio-card-meta">
+                            <span>California</span>
+                        </div>
+                        <span class="portfolio-card-link">
+                            enjoyjustdate.com
+                            <svg viewBox="0 0 24 24"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                        </span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Satellite Investments -->
+            <div class="portfolio-subsection">
+                <div class="portfolio-subsection-title">Satellite Investments</div>
+                <div class="portfolio-grid">
+                    <a href="https://esgglobal.com/" target="_blank" rel="noopener" class="portfolio-card">
+                        <div class="portfolio-card-header">
+                            <span class="portfolio-card-tag">Energy</span>
+                            <div class="portfolio-card-icon">
+                                <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </div>
+                        </div>
+                        <h3>ESG</h3>
+                        <p>Enterprise software delivering operational intelligence and efficiency optimization for energy providers.</p>
+                        <div class="portfolio-card-meta">
+                            <span>Birmingham, AL</span>
+                        </div>
+                        <span class="portfolio-card-link">
+                            esgglobal.com
+                            <svg viewBox="0 0 24 24"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                        </span>
+                    </a>
+                    <a href="https://www.banjohealth.com" target="_blank" rel="noopener" class="portfolio-card">
+                        <div class="portfolio-card-header">
+                            <span class="portfolio-card-tag">Health Care Tech</span>
+                            <div class="portfolio-card-icon">
+                                <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                            </div>
+                        </div>
+                        <h3>Banjo Health</h3>
+                        <p>AI-powered healthcare platform delivering clinical intelligence through intelligent process automation.</p>
+                        <div class="portfolio-card-meta">
+                            <span>Washington, D.C.</span>
+                        </div>
+                        <span class="portfolio-card-link">
+                            banjohealth.com
+                            <svg viewBox="0 0 24 24"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                        </span>
+                    </a>
+                    <a href="https://navidence.com/" target="_blank" rel="noopener" class="portfolio-card">
+                        <div class="portfolio-card-header">
+                            <span class="portfolio-card-tag">Health Care Tech</span>
+                            <div class="portfolio-card-icon">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            </div>
+                        </div>
+                        <h3>Navidence</h3>
+                        <p>AI-native clinical research platform enabling efficient study design and deployment leveraging real-world evidence data.</p>
+                        <div class="portfolio-card-meta">
+                            <span>Colorado</span>
+                        </div>
+                        <span class="portfolio-card-link">
+                            navidence.com
+                            <svg viewBox="0 0 24 24"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                        </span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Exited Investments -->
+            <div class="portfolio-subsection">
+                <div class="portfolio-subsection-title">Exited Investments</div>
+                <div class="portfolio-grid">
+                    <a href="http://whitestar.com" target="_blank" rel="noopener" class="portfolio-card exited">
+                        <div class="portfolio-card-header">
+                            <span class="portfolio-card-tag">Technology</span>
+                            <div class="portfolio-card-icon">
+                                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            </div>
+                        </div>
+                        <h3>WhiteStar</h3>
+                        <p>Geospatial intelligence platform delivering location-based analytics for enterprise clients. Exited at 9.6x MOIC in under 3 years.</p>
+                        <div class="portfolio-card-meta">
+                            <span>Denver, CO</span>
+                        </div>
+                        <span class="portfolio-card-link">
+                            whitestar.com
+                            <svg viewBox="0 0 24 24"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer-wrapper">
+        <div class="footer">
+            <div class="footer-left">
+                &copy; 2026 Contour Ridge. All rights reserved.
+            </div>
+            <div class="footer-right">
+                <span>San Antonio, Texas</span>
+                <a href="mailto:info@contourridge.com">Contact Us</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script>
+        // Navbar scroll effect
+        const nav = document.getElementById('nav');
+        window.addEventListener('scroll', () => {
+            nav.classList.toggle('scrolled', window.scrollY > 60);
+        });
+
+        // Mobile menu toggle
+        const menuBtn = document.getElementById('menuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        let menuOpen = false;
+
+        menuBtn.addEventListener('click', () => {
+            menuOpen = !menuOpen;
+            mobileMenu.classList.toggle('active', menuOpen);
+            const spans = menuBtn.querySelectorAll('span');
+            if (menuOpen) {
+                spans[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
+                spans[1].style.opacity = '0';
+                spans[2].style.transform = 'rotate(-45deg) translate(5px, -5px)';
+            } else {
+                spans[0].style.transform = '';
+                spans[1].style.opacity = '1';
+                spans[2].style.transform = '';
+            }
+        });
+
+        function closeMenu() {
+            menuOpen = false;
+            mobileMenu.classList.remove('active');
+            const spans = menuBtn.querySelectorAll('span');
+            spans[0].style.transform = '';
+            spans[1].style.opacity = '1';
+            spans[2].style.transform = '';
+        }
+
+        // Sectors accordion functionality - expand on hover
+        // Sector Tabs Handler - Hover Activation
+        const sectorTabs = document.querySelectorAll('.sector-tab');
+        const sectorPanels = document.querySelectorAll('.sector-panel');
+
+        sectorTabs.forEach(tab => {
+            tab.addEventListener('mouseenter', () => {
+                const sectorName = tab.getAttribute('data-sector');
+
+                // Remove active from all tabs and panels
+                sectorTabs.forEach(t => t.classList.remove('active'));
+                sectorPanels.forEach(p => p.classList.remove('active'));
+
+                // Add active to hovered tab and matching panel
+                tab.classList.add('active');
+                const activePanel = document.querySelector(`.sector-panel[data-sector="${sectorName}"]`);
+                if (activePanel) {
+                    activePanel.classList.add('active');
+                }
+            });
+        });
+
+        // ===== LIVING TOPOGRAPHY — Perlin Noise Canvas =====
+        (function() {
+            const canvas = document.getElementById('topoCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            let W, H;
+            let targetMX = 0.5, targetMY = 0.5, smoothMX = 0.5, smoothMY = 0.5;
+            let time = 0, animId;
+            const GRID = 6;  // cell size in px — balance of quality vs speed
+
+            // --- Perlin noise ---
+            const PERM = new Uint8Array(512);
+            const GRAD = [[1,1],[-1,1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]];
+            (function seed() {
+                const p = Array.from({length: 256}, (_, i) => i);
+                for (let i = 255; i > 0; i--) {
+                    const j = (Math.random() * (i + 1)) | 0;
+                    [p[i], p[j]] = [p[j], p[i]];
+                }
+                for (let i = 0; i < 512; i++) PERM[i] = p[i & 255];
+            })();
+
+            function noise2D(x, y) {
+                const xi = x | 0, yi = y | 0;
+                const xf = x - xi, yf = y - yi;
+                const u = xf * xf * (3 - 2 * xf);
+                const v = yf * yf * (3 - 2 * yf);
+                const xi2 = xi & 255, yi2 = yi & 255;
+
+                const g = (hash, dx, dy) => {
+                    const g = GRAD[hash & 7];
+                    return g[0] * dx + g[1] * dy;
+                };
+                const aa = PERM[PERM[xi2] + yi2];
+                const ba = PERM[PERM[xi2 + 1] + yi2];
+                const ab = PERM[PERM[xi2] + yi2 + 1];
+                const bb = PERM[PERM[xi2 + 1] + yi2 + 1];
+
+                return (
+                    g(aa, xf, yf) + u * (g(ba, xf-1, yf) - g(aa, xf, yf))
+                ) + v * (
+                    (g(ab, xf, yf-1) + u * (g(bb, xf-1, yf-1) - g(ab, xf, yf-1))) -
+                    (g(aa, xf, yf) + u * (g(ba, xf-1, yf) - g(aa, xf, yf)))
+                );
+            }
+
+            function fbm(x, y) {
+                return noise2D(x, y) * 0.5
+                     + noise2D(x*2, y*2) * 0.25
+                     + noise2D(x*4, y*4) * 0.125
+                     + noise2D(x*8, y*8) * 0.0625;
+            }
+
+            // --- Grid & elevation ---
+            let cols, rows, elevGrid;
+
+            function resize() {
+                const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+                W = canvas.clientWidth;
+                H = canvas.clientHeight;
+                canvas.width = W * dpr;
+                canvas.height = H * dpr;
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                cols = Math.ceil(W / GRID) + 1;
+                rows = Math.ceil(H / GRID) + 1;
+                elevGrid = new Float32Array(cols * rows);
+            }
+
+            function computeElevation() {
+                const t1 = time * 0.08, t2 = time * 0.05;
+                const sx = 3.2 / W, sy = 3.2 / H;
+                const mx = smoothMX, my = smoothMY;
+
+                for (let r = 0; r < rows; r++) {
+                    const py = r * GRID;
+                    const ny = py * sy + t2;
+                    const dyM = py / H - my;
+                    const dyM2 = dyM * dyM;
+                    for (let c = 0; c < cols; c++) {
+                        const px = c * GRID;
+                        const nx = px * sx + t1;
+                        let e = fbm(nx, ny);
+
+                        // Mouse hill
+                        const dxM = px / W - mx;
+                        const d2 = dxM * dxM + dyM2;
+                        e += Math.exp(-d2 * 14) * 0.3;
+
+                        elevGrid[r * cols + c] = e;
+                    }
+                }
+            }
+
+            // --- Drawing ---
+            function draw() {
+                // Smooth mouse interpolation
+                smoothMX += (targetMX - smoothMX) * 0.06;
+                smoothMY += (targetMY - smoothMY) * 0.06;
+
+                computeElevation();
+                ctx.clearRect(0, 0, W, H);
+
+                const numLevels = 16;
+
+                for (let lv = 0; lv < numLevels; lv++) {
+                    const threshold = -0.45 + lv * (0.9 / numLevels);
+                    const baseAlpha = 0.06 + (lv / numLevels) * 0.14;
+
+                    // Base contour pass
+                    ctx.strokeStyle = `rgba(0, 180, 216, ${baseAlpha})`;
+                    ctx.lineWidth = 0.7;
+                    ctx.beginPath();
+
+                    for (let r = 0; r < rows - 1; r++) {
+                        const rowOff = r * cols;
+                        for (let c = 0; c < cols - 1; c++) {
+                            const e00 = elevGrid[rowOff + c];
+                            const e10 = elevGrid[rowOff + c + 1];
+                            const e01 = elevGrid[rowOff + cols + c];
+                            const e11 = elevGrid[rowOff + cols + c + 1];
+
+                            const x = c * GRID, y = r * GRID;
+
+                            // Marching squares — find iso-crossings
+                            let n = 0;
+                            let ax, ay, bx, by, cx2, cy2, dx2, dy2;
+
+                            const d0 = e00 - threshold, d1 = e10 - threshold;
+                            const d2_ = e01 - threshold, d3 = e11 - threshold;
+
+                            if (d0 * d1 < 0) {
+                                const t = d0 / (d0 - d1);
+                                if (n===0) { ax = x+t*GRID; ay = y; }
+                                else if (n===1) { bx = x+t*GRID; by = y; }
+                                else if (n===2) { cx2 = x+t*GRID; cy2 = y; }
+                                else { dx2 = x+t*GRID; dy2 = y; }
+                                n++;
+                            }
+                            if (d2_ * d3 < 0) {
+                                const t = d2_ / (d2_ - d3);
+                                if (n===0) { ax = x+t*GRID; ay = y+GRID; }
+                                else if (n===1) { bx = x+t*GRID; by = y+GRID; }
+                                else if (n===2) { cx2 = x+t*GRID; cy2 = y+GRID; }
+                                else { dx2 = x+t*GRID; dy2 = y+GRID; }
+                                n++;
+                            }
+                            if (d0 * d2_ < 0) {
+                                const t = d0 / (d0 - d2_);
+                                if (n===0) { ax = x; ay = y+t*GRID; }
+                                else if (n===1) { bx = x; by = y+t*GRID; }
+                                else if (n===2) { cx2 = x; cy2 = y+t*GRID; }
+                                else { dx2 = x; dy2 = y+t*GRID; }
+                                n++;
+                            }
+                            if (d1 * d3 < 0) {
+                                const t = d1 / (d1 - d3);
+                                if (n===0) { ax = x+GRID; ay = y+t*GRID; }
+                                else if (n===1) { bx = x+GRID; by = y+t*GRID; }
+                                else if (n===2) { cx2 = x+GRID; cy2 = y+t*GRID; }
+                                else { dx2 = x+GRID; dy2 = y+t*GRID; }
+                                n++;
+                            }
+
+                            if (n >= 2) {
+                                ctx.moveTo(ax, ay);
+                                ctx.lineTo(bx, by);
+                                if (n === 4) {
+                                    ctx.moveTo(cx2, cy2);
+                                    ctx.lineTo(dx2, dy2);
+                                }
+                            }
+                        }
+                    }
+                    ctx.stroke();
+                }
+
+                time += 0.007;
+                animId = requestAnimationFrame(draw);
+            }
+
+            // Mouse tracking + CSS glow spotlight
+            const glowEl = document.getElementById('heroGlow');
+            const heroEl = document.getElementById('hero');
+
+            heroEl.addEventListener('mousemove', (e) => {
+                const rect = heroEl.getBoundingClientRect();
+                const px = e.clientX - rect.left;
+                const py = e.clientY - rect.top;
+                targetMX = px / rect.width;
+                targetMY = py / rect.height;
+                // Update CSS spotlight position
+                glowEl.style.setProperty('--glow-x', px + 'px');
+                glowEl.style.setProperty('--glow-y', py + 'px');
+            }, { passive: true });
+
+            heroEl.addEventListener('touchmove', (e) => {
+                const rect = heroEl.getBoundingClientRect();
+                const px = e.touches[0].clientX - rect.left;
+                const py = e.touches[0].clientY - rect.top;
+                targetMX = px / rect.width;
+                targetMY = py / rect.height;
+                glowEl.style.setProperty('--glow-x', px + 'px');
+                glowEl.style.setProperty('--glow-y', py + 'px');
+            }, { passive: true });
+
+            window.addEventListener('resize', resize);
+            resize();
+            draw();
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) cancelAnimationFrame(animId);
+                else draw();
+            });
+        })();
+
+        // Mouse tracking for floating orbs
+        const orbs = document.querySelectorAll('.floating-orb');
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+
+            orbs.forEach((orb, index) => {
+                const speed = 0.05 + (index * 0.02); // Different speeds for each orb
+                const orbX = orb.getBoundingClientRect().left + window.scrollX;
+                const orbY = orb.getBoundingClientRect().top + window.scrollY;
+
+                const dx = (mouseX + window.scrollX - orbX) * speed;
+                const dy = (mouseY + window.scrollY - orbY) * speed;
+
+                orb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            });
+        });
+
+        // Parallax contour line layers on scroll
+        const contourLayers = {
+            slow: document.querySelectorAll('.contour-layer-slow'),
+            mid: document.querySelectorAll('.contour-layer-mid'),
+            fast: document.querySelectorAll('.contour-layer-fast')
+        };
+
+        window.addEventListener('scroll', () => {
+            const scrolled = window.scrollY;
+
+            contourLayers.slow.forEach(el => {
+                const rect = el.parentElement.getBoundingClientRect();
+                const offset = (rect.top + scrolled) - scrolled;
+                el.style.transform = `translateY(${offset * 0.03}px)`;
+            });
+
+            contourLayers.mid.forEach(el => {
+                const rect = el.parentElement.getBoundingClientRect();
+                const offset = (rect.top + scrolled) - scrolled;
+                el.style.transform = `translateY(${offset * 0.06}px)`;
+            });
+
+            contourLayers.fast.forEach(el => {
+                const rect = el.parentElement.getBoundingClientRect();
+                const offset = (rect.top + scrolled) - scrolled;
+                el.style.transform = `translateY(${offset * 0.1}px)`;
+            });
+        }, { passive: true });
+
+        // Scroll-triggered fade-in
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+        // Growth loops scroll animation - move from center to circle positions
+        const strategySection = document.querySelector('#strategy');
+        const growthLoopStages = document.querySelectorAll('.growth-loop-stage');
+
+        // Debug: Log the data attributes
+        console.log('Growth Loop Stages found:', growthLoopStages.length);
+        growthLoopStages.forEach((stage, i) => {
+            console.log(`Stage ${i}: finalX=${stage.dataset.finalX}, finalY=${stage.dataset.finalY}`);
+        });
+
+        window.addEventListener('scroll', () => {
+            if (!strategySection) return;
+
+            // Skip circular animation on mobile - stages are stacked vertically via CSS
+            if (window.innerWidth <= 768) return;
+
+            const rect = strategySection.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const sectionHeight = strategySection.offsetHeight;
+
+            const rangeStart = windowHeight;
+            const rangeEnd = -sectionHeight;
+
+            let progress = (rangeStart - rect.top) / (rangeStart - rangeEnd);
+            progress = Math.max(0, Math.min(1, progress));
+
+            growthLoopStages.forEach((stage) => {
+                const initialX = parseFloat(stage.dataset.initialX) || 0;
+                const initialY = parseFloat(stage.dataset.initialY) || 0;
+                const finalX = parseFloat(stage.dataset.finalX) || 0;
+                const finalY = parseFloat(stage.dataset.finalY) || 0;
+
+                const currentX = initialX + (finalX - initialX) * progress;
+                const currentY = initialY + (finalY - initialY) * progress;
+
+                stage.style.transform = `translate(-50%, -50%) translate(${currentX}px, ${currentY}px)`;
+            });
+        }, { passive: true });
+    </script>
+
+</body>
+</html>
