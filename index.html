@@ -895,6 +895,7 @@
 
         .timeline-stage {
             display: flex;
+            align-items: flex-start;
             gap: 32px;
             margin-bottom: 48px;
             position: relative;
@@ -956,14 +957,15 @@
 
         .timeline-content {
             flex: 1;
-            padding-top: 6px;
+            padding-top: 0;
         }
 
         .timeline-title {
             font-size: 1.15rem;
             font-weight: 600;
             color: var(--accent);
-            margin-bottom: 8px;
+            margin-bottom: 0;
+            line-height: 1.2;
             letter-spacing: 0.01em;
             opacity: 0;
             animation: fadeInUp 0.6s ease-out forwards;
@@ -992,7 +994,7 @@
         .timeline-text {
             font-size: 0.95rem;
             color: var(--text-secondary);
-            line-height: 1.7;
+            line-height: 1.4;
             opacity: 0;
             animation: fadeInUp 0.6s ease-out forwards;
         }
@@ -2584,7 +2586,7 @@
                             </div>
                         </div>
                         <h3>Just Date</h3>
-                        <p>Organic fruit-sweetened chocolates, sugar and syrups providing nutrient rich, low-glycemic alternatives to refined sugar.</p>
+                        <p>Organic fruit-sweetened chocolates, sugar and syrups providing nutrient-rich, low-glycemic alternatives to refined sugar.</p>
                         <div class="portfolio-card-meta">
                             <span>San Francisco, CA</span>
                         </div>
